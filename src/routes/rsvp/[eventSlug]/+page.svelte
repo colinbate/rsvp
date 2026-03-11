@@ -1,7 +1,52 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { onMount } from 'svelte';
 
 	let { data, form } = $props();
+
+	const STORAGE_KEY = 'bts-rsvp-remember';
+
+	let rememberMe = $state(false);
+	let savedName = $state('');
+	let savedEmail = $state('');
+
+	// Load saved details from localStorage after hydration
+	onMount(() => {
+		try {
+			const stored = localStorage.getItem(STORAGE_KEY);
+			if (stored) {
+				const parsed = JSON.parse(stored);
+				savedName = parsed.name ?? '';
+				savedEmail = parsed.email ?? '';
+				rememberMe = true;
+			}
+		} catch {
+			// Ignore parse errors or storage access issues
+		}
+	});
+
+	// The displayed value: form submission values take priority (validation errors),
+	// then saved localStorage values, then empty string.
+	const nameValue = $derived(form?.name ?? savedName);
+	const emailValue = $derived(form?.email ?? savedEmail);
+
+	function handleSubmit({ formData }: { formData: FormData }) {
+		const name = formData.get('name')?.toString().trim() ?? '';
+		const email = formData.get('email')?.toString().trim() ?? '';
+		if (rememberMe && name && email) {
+			try {
+				localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, email }));
+			} catch {
+				// Storage full or blocked — ignore
+			}
+		} else {
+			try {
+				localStorage.removeItem(STORAGE_KEY);
+			} catch {
+				// Ignore
+			}
+		}
+	}
 </script>
 
 <svelte:head>
@@ -41,7 +86,7 @@
 			</div>
 		{/if}
 
-		<form method="POST" use:enhance class="space-y-5">
+		<form method="POST" use:enhance={handleSubmit} class="space-y-5">
 			<div>
 				<label for="name" class="block text-sm font-medium text-gray-700">Name</label>
 				<input
@@ -49,7 +94,7 @@
 					id="name"
 					name="name"
 					required
-					value={form?.name ?? ''}
+					value={nameValue}
 					autocomplete="name"
 					class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
 				/>
@@ -62,10 +107,22 @@
 					id="email"
 					name="email"
 					required
-					value={form?.email ?? ''}
+					value={emailValue}
 					autocomplete="email"
 					class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
 				/>
+			</div>
+
+			<div class="flex items-center gap-2">
+				<input
+					type="checkbox"
+					id="remember_me"
+					bind:checked={rememberMe}
+					class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+				/>
+				<label for="remember_me" class="text-sm text-gray-600">
+					Remember my details for faster RSVPs
+				</label>
 			</div>
 
 			<!-- Honeypot field — hidden from real users -->
