@@ -15,6 +15,11 @@ database_name = "rsvp-db"
 database_id = "ec6143a3-a7e6-46fb-9735-d49f00fe425a"
 migrations_dir = "migrations"
 
+[vars]
+APP_URL = "https://rsvp.bermudatrianglesociety.com"
+EMAIL_FROM = "Bermuda Triangle Society <rsvp@bermudatrianglesociety.com>"
+# RESEND_API_KEY should be set as a secret via `wrangler secret put RESEND_API_KEY`
+
 [[routes]]
 pattern = "rsvp.bermudatrianglesociety.com"
 custom_domain = true

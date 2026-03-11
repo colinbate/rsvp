@@ -6,7 +6,11 @@ declare global {
 			db: ORM;
 		}
 		interface Platform {
-			env: Env;
+			env: Env & {
+				RESEND_API_KEY?: string;
+				EMAIL_FROM?: string;
+				APP_URL?: string;
+			};
 			cf: CfProperties;
 			ctx: ExecutionContext;
 		}
