@@ -4,6 +4,7 @@ declare global {
 	namespace App {
 		interface Locals {
 			db: ORM;
+			user?: string;
 		}
 		interface Platform {
 			env: Env & {
