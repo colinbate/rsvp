@@ -17,8 +17,7 @@ migrations_dir = "migrations"
 
 [vars]
 APP_URL = "https://rsvp.bermudatrianglesociety.com"
-EMAIL_FROM = "Bermuda Triangle Society <rsvp@bermudatrianglesociety.com>"
-# RESEND_API_KEY should be set as a secret via `wrangler secret put RESEND_API_KEY`
+EMAIL_FROM = "Bermuda Triangle Society <notify@rsvp.bermudatrianglesociety.com>"
 
 [[routes]]
 pattern = "rsvp.bermudatrianglesociety.com"

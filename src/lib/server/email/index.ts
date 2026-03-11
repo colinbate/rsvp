@@ -1,5 +1,6 @@
 import { formatDateTime } from '$lib/server/utils';
 import type { Event, Registration } from '$lib/server/db/schema';
+import { Resend } from 'resend';
 
 interface EmailConfig {
 	apiKey: string;
@@ -15,26 +16,18 @@ interface SendEmailParams {
 
 async function sendEmail(config: EmailConfig, params: SendEmailParams): Promise<boolean> {
 	try {
-		const response = await fetch('https://api.resend.com/emails', {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${config.apiKey}`,
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				from: config.fromAddress,
-				to: [params.to],
-				subject: params.subject,
-				html: params.html
-			})
+		const resend = new Resend(config.apiKey);
+		const { error } = await resend.emails.send({
+			from: config.fromAddress,
+			to: [params.to],
+			subject: params.subject,
+			html: params.html
 		});
 
-		if (!response.ok) {
-			const errorBody = await response.text();
-			console.error(`Resend API error (${response.status}): ${errorBody}`);
+		if (error) {
+			console.error(`Resend API error (${error.statusCode}): ${error.message}`);
 			return false;
 		}
-
 		return true;
 	} catch (error) {
 		console.error('Failed to send email:', error);
@@ -188,7 +181,8 @@ export async function sendCancellationConfirmation(
 export function getEmailConfig(platform: App.Platform | undefined): EmailConfig | null {
 	const env = platform?.env as Record<string, string> | undefined;
 	const apiKey = env?.RESEND_API_KEY;
-	const fromAddress = env?.EMAIL_FROM ?? 'Bermuda Triangle Society <rsvp@bermudatrianglesociety.com>';
+	const fromAddress =
+		env?.EMAIL_FROM ?? 'Bermuda Triangle Society <rsvp@bermudatrianglesociety.com>';
 	const appUrl = env?.APP_URL ?? 'https://rsvp.bermudatrianglesociety.com';
 
 	if (!apiKey) {
