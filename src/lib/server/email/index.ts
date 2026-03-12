@@ -68,7 +68,7 @@ function emailWrapper(content: string): string {
 	<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
 	<p style="font-size: 12px; color: #6b7280;">
 		Bermuda Triangle Society &mdash; RSVP System<br>
-		This is a transactional email related to your event registration. Please do not reply to this email.
+		If you have questions, you can reply to this email.
 	</p>
 </body>
 </html>`;
@@ -182,7 +182,7 @@ export function getEmailConfig(platform: App.Platform | undefined): EmailConfig 
 	const env = platform?.env as Record<string, string> | undefined;
 	const apiKey = env?.RESEND_API_KEY;
 	const fromAddress =
-		env?.EMAIL_FROM ?? 'Bermuda Triangle Society <rsvp@bermudatrianglesociety.com>';
+		env?.EMAIL_FROM ?? 'Bermuda Triangle Society <notify@rsvp.bermudatrianglesociety.com>';
 	const appUrl = env?.APP_URL ?? 'https://rsvp.bermudatrianglesociety.com';
 
 	if (!apiKey) {

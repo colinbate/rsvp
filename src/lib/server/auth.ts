@@ -5,7 +5,6 @@ export async function getUserFromAccess(request: Request, env: Env | undefined) 
 	const token = request.headers.get('cf-access-jwt-assertion');
 
 	// local-only convenience shim
-	console.log('CHECK ACCESS', token, env?.DEV_USER_EMAIL);
 	if (!token && env?.DEV_USER_EMAIL) {
 		return {
 			email: env.DEV_USER_EMAIL,
