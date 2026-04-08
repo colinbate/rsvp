@@ -9,6 +9,7 @@ export const events = sqliteTable('events', {
 	location: text('location'),
 	startsAt: text('starts_at').notNull(),
 	endsAt: text('ends_at'),
+	timezone: text('timezone').notNull().default('Atlantic/Bermuda'),
 	capacity: integer('capacity').notNull().default(20),
 	waitlistEnabled: integer('waitlist_enabled', { mode: 'boolean' }).notNull().default(true),
 	status: text('status', { enum: ['draft', 'open', 'closed', 'cancelled', 'completed'] })

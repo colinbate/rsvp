@@ -1,11 +1,11 @@
 <script lang="ts">
 	import './layout.css';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import ModeSwitcher from '$lib/components/ModeSwitcher.svelte';
 
 	let { children } = $props();
 
-	let isAdmin = $derived($page.url.pathname.startsWith('/admin'));
+	let isAdmin = $derived(page.url.pathname.startsWith('/admin'));
 </script>
 
 <div class="min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">

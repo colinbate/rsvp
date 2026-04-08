@@ -10,12 +10,17 @@
 		location?: string | null;
 		startsAt?: string;
 		endsAt?: string | null;
+		timezone?: string;
 		capacity?: number;
 		waitlistEnabled?: boolean;
 		status?: string;
 	};
 
 	let { event = {} as EventData, error = null as string | null, isEdit = false } = $props();
+
+	let browserTimezone = $derived(
+		event.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+	);
 
 	function generateSlug() {
 		const titleInput = document.getElementById('title') as HTMLInputElement | null;
@@ -31,14 +36,25 @@
 		}
 	}
 
-	// Format a datetime string for the datetime-local input
+	// Format a UTC datetime string for the datetime-local input,
+	// converting to the event's timezone.
 	function toLocalDatetime(dateStr: string | null | undefined): string {
 		if (!dateStr) return '';
 		const d = new Date(dateStr);
 		if (isNaN(d.getTime())) return dateStr;
-		// Format as YYYY-MM-DDTHH:mm
-		const pad = (n: number) => n.toString().padStart(2, '0');
-		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+		const formatter = new Intl.DateTimeFormat('en-CA', {
+			timeZone: browserTimezone,
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false
+		});
+		const parts = formatter.formatToParts(d);
+		const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+		const hour = get('hour') === '24' ? '00' : get('hour');
+		return `${get('year')}-${get('month')}-${get('day')}T${hour}:${get('minute')}`;
 	}
 </script>
 
@@ -51,6 +67,7 @@
 {/if}
 
 <form method="POST" use:enhance class="space-y-6">
+	<input type="hidden" name="timezone" value={browserTimezone} />
 	<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
 		<div class="sm:col-span-2">
 			<label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300"

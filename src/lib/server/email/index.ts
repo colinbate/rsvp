@@ -38,7 +38,7 @@ async function sendEmail(config: EmailConfig, params: SendEmailParams): Promise<
 function eventDetailsHtml(event: Event): string {
 	const locationLine = event.location ? `<p><strong>Location:</strong> ${event.location}</p>` : '';
 	const endsLine = event.endsAt
-		? `<p><strong>Ends:</strong> ${formatDateTime(event.endsAt)}</p>`
+		? `<p><strong>Ends:</strong> ${formatDateTime(event.endsAt, event.timezone)}</p>`
 		: '';
 	const canonicalLine = event.canonicalUrl
 		? `<p><a href="${event.canonicalUrl}">View full event details &rarr;</a></p>`
@@ -47,7 +47,7 @@ function eventDetailsHtml(event: Event): string {
 	return `
 		<div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
 			<h3 style="margin: 0 0 8px 0; color: #7c3aed;">${event.title}</h3>
-			<p><strong>When:</strong> ${formatDateTime(event.startsAt)}</p>
+			<p><strong>When:</strong> ${formatDateTime(event.startsAt, event.timezone)}</p>
 			${endsLine}
 			${locationLine}
 			${canonicalLine}
@@ -176,6 +176,62 @@ export async function sendCancellationConfirmation(
 		subject: `Registration Cancelled: ${event.title}`,
 		html
 	});
+}
+
+export async function sendReminderEmails(
+	config: EmailConfig,
+	event: Event,
+	recipients: Array<{ name: string; email: string; confirmationToken: string }>,
+	timing: 'today' | 'tomorrow'
+): Promise<{ sent: number; failed: number }> {
+	let sent = 0;
+	let failed = 0;
+
+	const resend = new Resend(config.apiKey);
+
+	const emailObjects = recipients.map((recipient) => {
+		const cancelUrl = `${config.appUrl}/cancel/${recipient.confirmationToken}`;
+
+		const html = emailWrapper(`
+		<h2 style="color: #7c3aed;">Event Reminder ⏰</h2>
+		<p>Hi ${recipient.name},</p>
+		<p>Just a friendly reminder that the following event is <strong>${timing}</strong>!</p>
+		${eventDetailsHtml(event)}
+		<p>We look forward to seeing you there!</p>
+		<p style="margin-top: 24px;">
+			<strong>Need to cancel?</strong><br>
+			<a href="${cancelUrl}" style="color: #7c3aed;">Click here to cancel your registration</a>
+		</p>
+	`);
+
+		return {
+			from: config.fromAddress,
+			to: [recipient.email],
+			subject: `Reminder: ${event.title} is ${timing}!`,
+			html
+		};
+	});
+
+	// Chunk into batches of 100
+	for (let i = 0; i < emailObjects.length; i += 100) {
+		const batch = emailObjects.slice(i, i + 100);
+
+		try {
+			const { data, error } = await resend.batch.send(batch);
+
+			if (error) {
+				console.error(`Resend batch API error: ${error.message}`);
+				failed += batch.length;
+			} else {
+				sent += data ? data.data.length : batch.length;
+			}
+		} catch (error) {
+			console.error('Failed to send reminder email batch:', error);
+			failed += batch.length;
+		}
+	}
+
+	return { sent, failed };
 }
 
 export function getEmailConfig(platform: App.Platform | undefined): EmailConfig | null {

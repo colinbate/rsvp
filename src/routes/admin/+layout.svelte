@@ -21,6 +21,11 @@
 			</a>
 		</div>
 		<div class="flex items-center gap-4">
+			{#if globalThis.Temporal}
+				<span class="text-xs text-transparent hover:text-gray-500 dark:hover:text-gray-400"
+					>{globalThis.Temporal.Now.zonedDateTimeISO().toString()}</span
+				>
+			{/if}
 			{#if data.user}
 				<span class="text-xs text-gray-500 dark:text-gray-400">{data.user}</span>
 			{/if}

@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getEventById, updateEvent } from '$lib/server/data/events';
+import { localDatetimeToUTC } from '$lib/server/utils';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const id = parseInt(params.id, 10);
@@ -38,6 +39,7 @@ export const actions = {
 		const capacity = parseInt(formData.get('capacity')?.toString() ?? '20', 10);
 		const waitlistEnabled = formData.has('waitlist_enabled');
 		const status = formData.get('status')?.toString().trim() ?? 'draft';
+		const timezone = formData.get('timezone')?.toString().trim() || 'Atlantic/Bermuda';
 
 		const formValues = {
 			title,
@@ -46,6 +48,7 @@ export const actions = {
 			location,
 			startsAt,
 			endsAt,
+			timezone,
 			capacity,
 			waitlistEnabled,
 			status
@@ -73,8 +76,9 @@ export const actions = {
 				slug,
 				canonicalUrl,
 				location,
-				startsAt: new Date(startsAt).toISOString(),
-				endsAt: endsAt ? new Date(endsAt).toISOString() : null,
+				startsAt: localDatetimeToUTC(startsAt, timezone),
+				endsAt: endsAt ? localDatetimeToUTC(endsAt, timezone) : null,
+				timezone,
 				capacity,
 				waitlistEnabled,
 				status: status as 'draft' | 'open' | 'closed' | 'cancelled' | 'completed'

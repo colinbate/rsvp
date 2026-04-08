@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getEventWithCounts, getEventById } from '$lib/server/data/events';
 import {
 	getRegistrationsByEvent,
+	getRegistrationsByEventAndStatus,
 	createRegistration,
 	cancelRegistration,
 	promoteRegistration,
@@ -13,13 +14,19 @@ import {
 } from '$lib/server/data/registrations';
 import { findOrCreatePerson } from '$lib/server/data/people';
 import { getRegisteredCount } from '$lib/server/data/registrations';
-import { isValidEmail } from '$lib/server/utils';
+import {
+	isValidEmail,
+	getDateInTimezone,
+	getTodayInTimezone,
+	getTomorrowInTimezone
+} from '$lib/server/utils';
 import {
 	getEmailConfig,
 	sendRegistrationConfirmation,
 	sendWaitlistConfirmation,
 	sendWaitlistPromotion,
-	sendCancellationConfirmation
+	sendCancellationConfirmation,
+	sendReminderEmails
 } from '$lib/server/email';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -228,5 +235,51 @@ export const actions = {
 		return {
 			actionSuccess: `Confirmation email resent to ${updatedData.registration.emailSnapshot}.`
 		};
+	},
+
+	remind: async ({ params, locals, platform }) => {
+		const id = parseInt(params.id, 10);
+		if (isNaN(id)) return fail(400, { actionError: 'Invalid event ID.' });
+
+		const event = await getEventById(locals.db, id);
+		if (!event) return fail(404, { actionError: 'Event not found.' });
+
+		const eventDate = getDateInTimezone(event.startsAt, event.timezone);
+		const today = getTodayInTimezone(event.timezone);
+		const tomorrow = getTomorrowInTimezone(event.timezone);
+
+		let timing: 'today' | 'tomorrow';
+		if (eventDate === today) {
+			timing = 'today';
+		} else if (eventDate === tomorrow) {
+			timing = 'tomorrow';
+		} else {
+			return fail(400, {
+				actionError: 'Reminders can only be sent the day before or the day of the event.'
+			});
+		}
+
+		const registrations = await getRegistrationsByEventAndStatus(locals.db, id, 'registered');
+		if (registrations.length === 0) {
+			return fail(400, { actionError: 'No registered attendees to remind.' });
+		}
+
+		const emailConfig = getEmailConfig(platform);
+		if (!emailConfig) return fail(500, { actionError: 'Email is not configured.' });
+
+		const recipients = registrations.map((r) => ({
+			name: r.registration.nameSnapshot,
+			email: r.registration.emailSnapshot,
+			confirmationToken: r.registration.confirmationToken
+		}));
+
+		const result = await sendReminderEmails(emailConfig, event, recipients, timing);
+
+		let message = `Reminder sent to ${result.sent} attendee(s).`;
+		if (result.failed > 0) {
+			message += ` (${result.failed} failed)`;
+		}
+
+		return { actionSuccess: message };
 	}
 } satisfies Actions;

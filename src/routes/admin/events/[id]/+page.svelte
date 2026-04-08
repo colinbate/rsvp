@@ -146,6 +146,14 @@
 			>
 				RSVP Page ↗
 			</a>
+			<form method="POST" action="?/remind" use:enhance>
+				<button
+					type="submit"
+					class="cursor-pointer rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 shadow-sm hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
+				>
+					📧 Send Reminder
+				</button>
+			</form>
 		</div>
 	</div>
 
