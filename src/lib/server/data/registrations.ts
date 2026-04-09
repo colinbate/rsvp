@@ -109,7 +109,7 @@ export async function createRegistration(
 		personId: number;
 		nameSnapshot: string;
 		emailSnapshot: string;
-		status: 'registered' | 'waitlisted';
+		status: 'registered' | 'waitlisted' | 'attended';
 		adminNote?: string;
 	}
 ) {

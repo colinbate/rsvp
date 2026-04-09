@@ -12,7 +12,7 @@ import {
 	regenerateToken,
 	type RegistrationStatus
 } from '$lib/server/data/registrations';
-import { findOrCreatePerson } from '$lib/server/data/people';
+import { findOrCreatePersonByNameAndOptionalEmail } from '$lib/server/data/people';
 import { getRegisteredCount } from '$lib/server/data/registrations';
 import {
 	isValidEmail,
@@ -70,27 +70,49 @@ export const actions = {
 		const name = formData.get('name')?.toString().trim() ?? '';
 		const email = formData.get('email')?.toString().trim() ?? '';
 		const adminNote = formData.get('admin_note')?.toString().trim() || undefined;
+		const sendEmail = formData.has('send_email');
 
 		if (!name) return fail(400, { addError: 'Name is required.', addName: name, addEmail: email });
-		if (!email || !isValidEmail(email))
-			return fail(400, { addError: 'A valid email is required.', addName: name, addEmail: email });
 
-		const person = await findOrCreatePerson(locals.db, name, email);
-
-		// Check for existing non-cancelled registration
-		const { findExistingRegistration } = await import('$lib/server/data/registrations');
-		const existing = await findExistingRegistration(locals.db, event.id, person.id);
-		if (existing && existing.status !== 'cancelled') {
+		// Email is optional, but if provided it must be valid
+		if (email && !isValidEmail(email)) {
 			return fail(400, {
-				addError: 'This person is already registered or waitlisted for this event.',
+				addError: 'Please enter a valid email address.',
 				addName: name,
 				addEmail: email
 			});
 		}
 
-		const registeredCount = await getRegisteredCount(locals.db, event.id);
-		const hasCapacity = registeredCount < event.capacity;
-		const status: 'registered' | 'waitlisted' = hasCapacity ? 'registered' : 'waitlisted';
+		const person = await findOrCreatePersonByNameAndOptionalEmail(
+			locals.db,
+			name,
+			email || undefined
+		);
+
+		// Check for existing non-cancelled registration (only if person has a real email)
+		if (email) {
+			const { findExistingRegistration } = await import('$lib/server/data/registrations');
+			const existing = await findExistingRegistration(locals.db, event.id, person.id);
+			if (existing && existing.status !== 'cancelled') {
+				return fail(400, {
+					addError: 'This person is already registered or waitlisted for this event.',
+					addName: name,
+					addEmail: email
+				});
+			}
+		}
+
+		// For completed events, record as attended directly
+		const isCompleted = event.status === 'completed';
+		let status: 'registered' | 'waitlisted' | 'attended';
+
+		if (isCompleted) {
+			status = 'attended';
+		} else {
+			const registeredCount = await getRegisteredCount(locals.db, event.id);
+			const hasCapacity = registeredCount < event.capacity;
+			status = hasCapacity ? 'registered' : 'waitlisted';
+		}
 
 		const registration = await createRegistration(locals.db, {
 			eventId: event.id,
@@ -98,22 +120,29 @@ export const actions = {
 			nameSnapshot: name,
 			emailSnapshot: email,
 			status,
-			adminNote
+			adminNote: adminNote ?? (isCompleted && !email ? 'Walk-in attendee' : undefined)
 		});
 
-		// Send confirmation email
-		const emailConfig = getEmailConfig(platform);
-		if (emailConfig) {
-			if (status === 'registered') {
-				await sendRegistrationConfirmation(emailConfig, event, registration, email, name);
-			} else {
-				await sendWaitlistConfirmation(emailConfig, event, registration, email, name);
+		// Only send email if explicitly requested and a valid email is provided
+		if (sendEmail && email) {
+			const emailConfig = getEmailConfig(platform);
+			if (emailConfig) {
+				if (status === 'registered') {
+					await sendRegistrationConfirmation(emailConfig, event, registration, email, name);
+				} else if (status === 'waitlisted') {
+					await sendWaitlistConfirmation(emailConfig, event, registration, email, name);
+				}
+				// Don't send confirmation for 'attended' status — the event is already over
 			}
 		}
 
-		return {
-			addSuccess: `${name} has been ${status === 'registered' ? 'registered' : 'added to the waitlist'}.`
-		};
+		const statusLabel = isCompleted
+			? 'recorded as attended'
+			: status === 'registered'
+				? 'registered'
+				: 'added to the waitlist';
+
+		return { addSuccess: `${name} has been ${statusLabel}.` };
 	},
 
 	cancel: async ({ request, locals, platform }) => {

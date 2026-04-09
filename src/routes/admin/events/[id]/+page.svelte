@@ -198,52 +198,71 @@
 <div
 	class="mb-8 rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800"
 >
-	<h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Add Attendee</h2>
-	<form method="POST" action="?/add" use:enhance class="flex flex-wrap items-end gap-3">
-		<div class="min-w-0 flex-1">
-			<label for="add-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-				>Name</label
-			>
-			<input
-				type="text"
-				id="add-name"
-				name="name"
-				required
-				value={formVal('addName')}
-				class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
-			/>
+	<h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
+		{data.event.status === 'completed' ? 'Record Walk-in' : 'Add Attendee'}
+	</h2>
+	{#if data.event.status === 'completed'}
+		<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+			This event is completed. Added attendees will be recorded as having attended. Email is
+			optional.
+		</p>
+	{/if}
+	<form method="POST" action="?/add" use:enhance class="space-y-4">
+		<div class="flex flex-wrap items-end gap-3">
+			<div class="min-w-0 flex-1">
+				<label for="add-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+					>Name</label
+				>
+				<input
+					type="text"
+					id="add-name"
+					name="name"
+					required
+					value={formVal('addName')}
+					class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+				/>
+			</div>
+			<div class="min-w-0 flex-1">
+				<label for="add-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+					>Email <span class="text-gray-400 dark:text-gray-500">(optional)</span></label
+				>
+				<input
+					type="email"
+					id="add-email"
+					name="email"
+					value={formVal('addEmail')}
+					class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+				/>
+			</div>
+			<div class="min-w-0 flex-1">
+				<label for="add-note" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+					>Note <span class="text-gray-400 dark:text-gray-500">(optional)</span></label
+				>
+				<input
+					type="text"
+					id="add-note"
+					name="admin_note"
+					placeholder={data.event.status === 'completed' ? 'Walk-in attendee' : 'Added by admin'}
+					class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+				/>
+			</div>
 		</div>
-		<div class="min-w-0 flex-1">
-			<label for="add-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-				>Email</label
+		<div class="flex items-center justify-between">
+			<label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+				<input
+					type="checkbox"
+					name="send_email"
+					class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-purple-500 dark:focus:ring-purple-400"
+				/>
+				Send notification email
+			</label>
+			<button
+				type="submit"
+				class="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600 dark:bg-purple-500 dark:hover:bg-purple-400"
 			>
-			<input
-				type="email"
-				id="add-email"
-				name="email"
-				required
-				value={formVal('addEmail')}
-				class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
-			/>
+				{data.event.status === 'completed' ? 'Record' : 'Add'}
+			</button>
 		</div>
-		<div class="min-w-0 flex-1">
-			<label for="add-note" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-				>Note <span class="text-gray-400 dark:text-gray-500">(optional)</span></label
-			>
-			<input
-				type="text"
-				id="add-note"
-				name="admin_note"
-				placeholder="Added by admin"
-				class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
-			/>
-		</div>
-		<button
-			type="submit"
-			class="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600 dark:bg-purple-500 dark:hover:bg-purple-400"
-		>
-			Add
-		</button>
 	</form>
 </div>
 
