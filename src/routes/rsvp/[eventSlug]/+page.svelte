@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 
 	let { data, form } = $props();
@@ -29,6 +30,13 @@
 	// then saved localStorage values, then empty string.
 	const nameValue = $derived(form?.name ?? savedName);
 	const emailValue = $derived(form?.email ?? savedEmail);
+	const memberIdValue = $derived(page.url.searchParams.get('member_id') ?? '');
+	const responseValue = $derived(page.url.searchParams.get('response') ?? '');
+	const isDecline = $derived(
+		['declined', 'decline', 'not_attending', 'not-attending', 'no'].includes(
+			responseValue.toLowerCase()
+		)
+	);
 
 	function handleSubmit({ formData }: { formData: FormData }) {
 		const name = formData.get('name')?.toString().trim() ?? '';
@@ -121,6 +129,9 @@
 				/>
 			</div>
 
+			<input type="hidden" name="member_id" value={memberIdValue} />
+			<input type="hidden" name="response" value={responseValue} />
+
 			<div class="flex items-center gap-2">
 				<input
 					type="checkbox"
@@ -143,7 +154,7 @@
 				type="submit"
 				class="w-full rounded-md bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-purple-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600 dark:bg-purple-500 dark:hover:bg-purple-600 dark:focus-visible:outline-purple-400"
 			>
-				Register
+				{isDecline ? 'Decline' : 'Register'}
 			</button>
 		</form>
 

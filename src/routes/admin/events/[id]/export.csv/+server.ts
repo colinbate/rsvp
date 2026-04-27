@@ -23,10 +23,19 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	const registrations = await getRegistrationsByEvent(locals.db, id);
 
-	const headers = ['Name', 'Email', 'Status', 'Registered At', 'Updated At', 'Admin Note'];
+	const headers = [
+		'Name',
+		'Email',
+		'Member ID',
+		'Status',
+		'Registered At',
+		'Updated At',
+		'Admin Note'
+	];
 	const rows = registrations.map(({ registration }) => [
 		escapeCSV(registration.nameSnapshot),
 		escapeCSV(registration.emailSnapshot),
+		escapeCSV(registration.memberIdSnapshot ?? ''),
 		escapeCSV(registration.status),
 		escapeCSV(registration.createdAt),
 		escapeCSV(registration.updatedAt),

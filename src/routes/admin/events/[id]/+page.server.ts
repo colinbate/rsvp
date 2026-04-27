@@ -6,13 +6,18 @@ import {
 	getRegistrationsByEventAndStatus,
 	createRegistration,
 	cancelRegistration,
+	declineRegistration,
 	promoteRegistration,
+	updateRegistrationDetails,
 	updateRegistrationStatus,
 	getRegistrationWithEvent,
 	regenerateToken,
 	type RegistrationStatus
 } from '$lib/server/data/registrations';
-import { findOrCreatePersonByNameAndOptionalEmail } from '$lib/server/data/people';
+import {
+	findOrCreatePersonByNameAndOptionalEmail,
+	MemberIdConflictError
+} from '$lib/server/data/people';
 import { getRegisteredCount } from '$lib/server/data/registrations';
 import {
 	isValidEmail,
@@ -47,6 +52,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const cancelled = allRegistrations.filter((r) => r.registration.status === 'cancelled');
 	const attended = allRegistrations.filter((r) => r.registration.status === 'attended');
 	const noShow = allRegistrations.filter((r) => r.registration.status === 'no_show');
+	const declined = allRegistrations.filter((r) => r.registration.status === 'declined');
 
 	return {
 		event,
@@ -54,7 +60,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		waitlisted,
 		cancelled,
 		attended,
-		noShow
+		noShow,
+		declined
 	};
 };
 
@@ -69,44 +76,59 @@ export const actions = {
 		const formData = await request.formData();
 		const name = formData.get('name')?.toString().trim() ?? '';
 		const email = formData.get('email')?.toString().trim() ?? '';
+		const memberId = formData.get('member_id')?.toString().trim() || null;
 		const adminNote = formData.get('admin_note')?.toString().trim() || undefined;
+		const responseStatus = formData.get('response_status')?.toString() ?? 'attending';
 		const sendEmail = formData.has('send_email');
 
-		if (!name) return fail(400, { addError: 'Name is required.', addName: name, addEmail: email });
+		if (!name) {
+			return fail(400, {
+				addError: 'Name is required.',
+				addName: name,
+				addEmail: email,
+				addMemberId: memberId ?? ''
+			});
+		}
 
 		// Email is optional, but if provided it must be valid
 		if (email && !isValidEmail(email)) {
 			return fail(400, {
 				addError: 'Please enter a valid email address.',
 				addName: name,
-				addEmail: email
+				addEmail: email,
+				addMemberId: memberId ?? ''
 			});
 		}
 
-		const person = await findOrCreatePersonByNameAndOptionalEmail(
-			locals.db,
-			name,
-			email || undefined
-		);
-
-		// Check for existing non-cancelled registration (only if person has a real email)
-		if (email) {
-			const { findExistingRegistration } = await import('$lib/server/data/registrations');
-			const existing = await findExistingRegistration(locals.db, event.id, person.id);
-			if (existing && existing.status !== 'cancelled') {
+		let person: Awaited<ReturnType<typeof findOrCreatePersonByNameAndOptionalEmail>>;
+		try {
+			person = await findOrCreatePersonByNameAndOptionalEmail(
+				locals.db,
+				name,
+				email || undefined,
+				memberId
+			);
+		} catch (error) {
+			if (error instanceof MemberIdConflictError) {
 				return fail(400, {
-					addError: 'This person is already registered or waitlisted for this event.',
+					addError: 'That member ID is already linked to another email address.',
 					addName: name,
-					addEmail: email
+					addEmail: email,
+					addMemberId: memberId ?? ''
 				});
 			}
+			throw error;
 		}
 
-		// For completed events, record as attended directly
-		const isCompleted = event.status === 'completed';
-		let status: 'registered' | 'waitlisted' | 'attended';
+		const { findExistingRegistration } = await import('$lib/server/data/registrations');
+		const existing = await findExistingRegistration(locals.db, event.id, person.id);
 
-		if (isCompleted) {
+		const isCompleted = event.status === 'completed';
+		let status: 'registered' | 'waitlisted' | 'attended' | 'declined';
+
+		if (responseStatus === 'declined') {
+			status = 'declined';
+		} else if (isCompleted) {
 			status = 'attended';
 		} else {
 			const registeredCount = await getRegisteredCount(locals.db, event.id);
@@ -114,17 +136,49 @@ export const actions = {
 			status = hasCapacity ? 'registered' : 'waitlisted';
 		}
 
-		const registration = await createRegistration(locals.db, {
-			eventId: event.id,
-			personId: person.id,
-			nameSnapshot: name,
-			emailSnapshot: email,
-			status,
-			adminNote: adminNote ?? (isCompleted && !email ? 'Walk-in attendee' : undefined)
-		});
+		let registration;
+		let promoted = null;
+		if (existing && existing.status !== 'cancelled' && existing.status !== 'declined') {
+			if (status !== 'declined') {
+				return fail(400, {
+					addError: 'This person already has an active RSVP for this event.',
+					addName: name,
+					addEmail: email,
+					addMemberId: memberId ?? ''
+				});
+			}
+
+			await updateRegistrationDetails(locals.db, existing.id, {
+				nameSnapshot: name,
+				emailSnapshot: email,
+				memberIdSnapshot: memberId,
+				adminNote: adminNote ?? null
+			});
+			const result = await declineRegistration(locals.db, existing.id);
+			registration = result.declined;
+			promoted = result.promoted;
+		} else if (existing) {
+			registration = await updateRegistrationDetails(locals.db, existing.id, {
+				nameSnapshot: name,
+				emailSnapshot: email,
+				memberIdSnapshot: memberId,
+				status,
+				adminNote: adminNote ?? (isCompleted && !email ? 'Walk-in attendee' : null)
+			});
+		} else {
+			registration = await createRegistration(locals.db, {
+				eventId: event.id,
+				personId: person.id,
+				nameSnapshot: name,
+				emailSnapshot: email,
+				memberIdSnapshot: memberId,
+				status,
+				adminNote: adminNote ?? (isCompleted && !email ? 'Walk-in attendee' : undefined)
+			});
+		}
 
 		// Only send email if explicitly requested and a valid email is provided
-		if (sendEmail && email) {
+		if (sendEmail && email && registration) {
 			const emailConfig = getEmailConfig(platform);
 			if (emailConfig) {
 				if (status === 'registered') {
@@ -136,11 +190,27 @@ export const actions = {
 			}
 		}
 
-		const statusLabel = isCompleted
-			? 'recorded as attended'
-			: status === 'registered'
-				? 'registered'
-				: 'added to the waitlist';
+		if (promoted) {
+			const emailConfig = getEmailConfig(platform);
+			if (emailConfig) {
+				await sendWaitlistPromotion(
+					emailConfig,
+					promoted.event,
+					promoted.registration,
+					promoted.registration.emailSnapshot,
+					promoted.registration.nameSnapshot
+				);
+			}
+		}
+
+		let statusLabel = 'added to the waitlist';
+		if (status === 'declined') {
+			statusLabel = 'recorded as declined';
+		} else if (isCompleted) {
+			statusLabel = 'recorded as attended';
+		} else if (status === 'registered') {
+			statusLabel = 'registered';
+		}
 
 		return { addSuccess: `${name} has been ${statusLabel}.` };
 	},
@@ -205,13 +275,33 @@ export const actions = {
 		};
 	},
 
-	status: async ({ request, locals }) => {
+	status: async ({ request, locals, platform }) => {
 		const formData = await request.formData();
 		const registrationId = parseInt(formData.get('registration_id')?.toString() ?? '', 10);
 		const newStatus = formData.get('status')?.toString() ?? '';
 		if (isNaN(registrationId)) return fail(400, { actionError: 'Invalid registration ID.' });
-		if (!['attended', 'no_show', 'registered'].includes(newStatus)) {
+		if (!['attended', 'no_show', 'registered', 'declined'].includes(newStatus)) {
 			return fail(400, { actionError: 'Invalid status.' });
+		}
+
+		if (newStatus === 'declined') {
+			const regData = await getRegistrationWithEvent(locals.db, registrationId);
+			if (!regData) return fail(404, { actionError: 'Registration not found.' });
+
+			const { promoted } = await declineRegistration(locals.db, registrationId);
+
+			const emailConfig = getEmailConfig(platform);
+			if (emailConfig && promoted) {
+				await sendWaitlistPromotion(
+					emailConfig,
+					promoted.event,
+					promoted.registration,
+					promoted.registration.emailSnapshot,
+					promoted.registration.nameSnapshot
+				);
+			}
+
+			return { actionSuccess: `${regData.registration.nameSnapshot} has been marked declined.` };
 		}
 
 		const updated = await updateRegistrationStatus(

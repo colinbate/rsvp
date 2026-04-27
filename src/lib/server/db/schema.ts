@@ -28,6 +28,7 @@ export const people = sqliteTable('people', {
 	name: text('name').notNull(),
 	email: text('email').notNull(),
 	emailNormalized: text('email_normalized').notNull().unique(),
+	memberId: text('member_id').unique(),
 	createdAt: text('created_at')
 		.notNull()
 		.default(sql`(strftime('%FT%H:%M:%fZ', 'now'))`),
@@ -46,8 +47,9 @@ export const registrations = sqliteTable('registrations', {
 		.references(() => people.id),
 	nameSnapshot: text('name_snapshot').notNull(),
 	emailSnapshot: text('email_snapshot').notNull(),
+	memberIdSnapshot: text('member_id_snapshot'),
 	status: text('status', {
-		enum: ['registered', 'waitlisted', 'cancelled', 'attended', 'no_show']
+		enum: ['registered', 'waitlisted', 'cancelled', 'attended', 'no_show', 'declined']
 	})
 		.notNull()
 		.default('registered'),

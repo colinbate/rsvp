@@ -5,10 +5,14 @@
 	const eventSlug = $derived(page.url.searchParams.get('event'));
 	const status = $derived(page.url.searchParams.get('status') ?? 'registered');
 	const isWaitlisted = $derived(status === 'waitlisted');
+	const isDeclined = $derived(status === 'declined');
 </script>
 
 <svelte:head>
-	<title>{isWaitlisted ? 'Waitlisted' : 'Registration Confirmed'} — Bermuda Triangle Society</title>
+	<title
+		>{isDeclined ? 'RSVP Declined' : isWaitlisted ? 'Waitlisted' : 'Registration Confirmed'} — Bermuda
+		Triangle Society</title
+	>
 </svelte:head>
 
 <div class="mx-auto max-w-lg px-4 py-12">
@@ -16,7 +20,16 @@
 		<img src="/favicon.svg" alt="" class="mx-auto mb-4 h-10 w-10" />
 	</div>
 
-	{#if isWaitlisted}
+	{#if isDeclined}
+		<div
+			class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center dark:border-gray-700 dark:bg-gray-800"
+		>
+			<h1 class="mb-2 text-2xl font-bold text-gray-800 dark:text-gray-200">RSVP updated</h1>
+			<p class="text-gray-700 dark:text-gray-400">
+				Thanks for letting us know you will not be attending.
+			</p>
+		</div>
+	{:else if isWaitlisted}
 		<div
 			class="rounded-lg border border-amber-200 bg-amber-50 p-8 text-center dark:border-amber-700 dark:bg-amber-900/30"
 		>

@@ -17,7 +17,13 @@ export async function getRegistrationsByEvent(db: ORM, eventId: number) {
 	return rows;
 }
 
-export type RegistrationStatus = 'registered' | 'waitlisted' | 'cancelled' | 'attended' | 'no_show';
+export type RegistrationStatus =
+	| 'registered'
+	| 'waitlisted'
+	| 'cancelled'
+	| 'attended'
+	| 'no_show'
+	| 'declined';
 
 export async function getRegistrationsByEventAndStatus(
 	db: ORM,
@@ -109,7 +115,8 @@ export async function createRegistration(
 		personId: number;
 		nameSnapshot: string;
 		emailSnapshot: string;
-		status: 'registered' | 'waitlisted' | 'attended';
+		memberIdSnapshot?: string | null;
+		status: 'registered' | 'waitlisted' | 'attended' | 'declined';
 		adminNote?: string;
 	}
 ) {
@@ -121,6 +128,7 @@ export async function createRegistration(
 			personId: data.personId,
 			nameSnapshot: data.nameSnapshot,
 			emailSnapshot: data.emailSnapshot,
+			memberIdSnapshot: data.memberIdSnapshot ?? null,
 			status: data.status,
 			confirmationToken: token,
 			adminNote: data.adminNote ?? null
@@ -128,6 +136,36 @@ export async function createRegistration(
 		.returning();
 
 	return result[0];
+}
+
+export async function updateRegistrationDetails(
+	db: ORM,
+	id: number,
+	data: {
+		nameSnapshot?: string;
+		emailSnapshot?: string;
+		memberIdSnapshot?: string | null;
+		status?: RegistrationStatus;
+		adminNote?: string | null;
+	}
+) {
+	const updates: Record<string, unknown> = {
+		updatedAt: new Date().toISOString()
+	};
+
+	if (data.nameSnapshot !== undefined) updates.nameSnapshot = data.nameSnapshot;
+	if (data.emailSnapshot !== undefined) updates.emailSnapshot = data.emailSnapshot;
+	if (data.memberIdSnapshot !== undefined) updates.memberIdSnapshot = data.memberIdSnapshot;
+	if (data.status !== undefined) updates.status = data.status;
+	if (data.adminNote !== undefined) updates.adminNote = data.adminNote;
+
+	const result = await db
+		.update(registrations)
+		.set(updates)
+		.where(eq(registrations.id, id))
+		.returning();
+
+	return result[0] ?? null;
 }
 
 export async function updateRegistrationStatus(
@@ -172,6 +210,24 @@ export async function cancelRegistration(db: ORM, id: number) {
 	}
 
 	return { cancelled, promoted };
+}
+
+/**
+ * Record that a person explicitly declined and optionally promote the next waitlisted person.
+ * Returns the promoted registration (with event and person) if one was promoted, or null.
+ */
+export async function declineRegistration(db: ORM, id: number) {
+	const reg = await getRegistrationWithEvent(db, id);
+	if (!reg) return { declined: null, promoted: null };
+
+	const declined = await updateRegistrationStatus(db, id, 'declined');
+
+	let promoted = null;
+	if (reg.registration.status === 'registered' && reg.event.waitlistEnabled) {
+		promoted = await promoteNextWaitlisted(db, reg.event.id);
+	}
+
+	return { declined, promoted };
 }
 
 /**

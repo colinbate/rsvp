@@ -159,7 +159,7 @@
 
 	<!-- Stats row -->
 	<div
-		class="mt-5 grid grid-cols-2 gap-4 border-t border-gray-100 pt-5 sm:grid-cols-5 dark:border-gray-700"
+		class="mt-5 grid grid-cols-2 gap-4 border-t border-gray-100 pt-5 sm:grid-cols-6 dark:border-gray-700"
 	>
 		<div class="text-center">
 			<p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -190,6 +190,10 @@
 		<div class="text-center">
 			<p class="text-2xl font-bold text-blue-700 dark:text-blue-400">{data.event.attendedCount}</p>
 			<p class="text-xs text-gray-500 dark:text-gray-400">Attended</p>
+		</div>
+		<div class="text-center">
+			<p class="text-2xl font-bold text-gray-700 dark:text-gray-300">{data.event.declinedCount}</p>
+			<p class="text-xs text-gray-500 dark:text-gray-400">Declined</p>
 		</div>
 	</div>
 </div>
@@ -233,6 +237,33 @@
 					value={formVal('addEmail')}
 					class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
 				/>
+			</div>
+			<div class="min-w-0 flex-1">
+				<label
+					for="add-member-id"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+					>Member ID <span class="text-gray-400 dark:text-gray-500">(optional)</span></label
+				>
+				<input
+					type="text"
+					id="add-member-id"
+					name="member_id"
+					value={formVal('addMemberId')}
+					class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+				/>
+			</div>
+			<div class="min-w-0 flex-1">
+				<label for="add-response" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+					>Response</label
+				>
+				<select
+					id="add-response"
+					name="response_status"
+					class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+				>
+					<option value="attending">Attending</option>
+					<option value="declined">Declined</option>
+				</select>
 			</div>
 			<div class="min-w-0 flex-1">
 				<label for="add-note" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -297,6 +328,10 @@
 						>
 						<th
 							class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+							>Member ID</th
+						>
+						<th
+							class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
 							>Registered</th
 						>
 						<th
@@ -317,6 +352,9 @@
 							>
 							<td class="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-400"
 								>{registration.emailSnapshot}</td
+							>
+							<td class="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400"
+								>{registration.memberIdSnapshot ?? ''}</td
 							>
 							<td class="px-4 py-2.5 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"
 								>{formatDate(registration.createdAt)}</td
@@ -346,6 +384,17 @@
 											title="Mark as no-show"
 										>
 											✗ No-show
+										</button>
+									</form>
+									<form method="POST" action="?/status" use:enhance>
+										<input type="hidden" name="registration_id" value={registration.id} />
+										<input type="hidden" name="status" value="declined" />
+										<button
+											type="submit"
+											class="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+											title="Mark as declined"
+										>
+											Declined
 										</button>
 									</form>
 									<form method="POST" action="?/resend" use:enhance>
@@ -410,6 +459,10 @@
 							>
 							<th
 								class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-amber-700 uppercase dark:text-amber-400"
+								>Member ID</th
+							>
+							<th
+								class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-amber-700 uppercase dark:text-amber-400"
 								>Waitlisted</th
 							>
 							<th
@@ -431,6 +484,9 @@
 								<td class="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-400"
 									>{registration.emailSnapshot}</td
 								>
+								<td class="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400"
+									>{registration.memberIdSnapshot ?? ''}</td
+								>
 								<td class="px-4 py-2.5 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"
 									>{formatDate(registration.createdAt)}</td
 								>
@@ -447,6 +503,17 @@
 												title="Promote to registered"
 											>
 												⬆ Promote
+											</button>
+										</form>
+										<form method="POST" action="?/status" use:enhance>
+											<input type="hidden" name="registration_id" value={registration.id} />
+											<input type="hidden" name="status" value="declined" />
+											<button
+												type="submit"
+												class="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+												title="Mark as declined"
+											>
+												Declined
 											</button>
 										</form>
 										<form method="POST" action="?/resend" use:enhance>
@@ -505,6 +572,10 @@
 						>
 						<th
 							class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-blue-700 uppercase dark:text-blue-400"
+							>Member ID</th
+						>
+						<th
+							class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-blue-700 uppercase dark:text-blue-400"
 							>Note</th
 						>
 						<th
@@ -521,6 +592,9 @@
 							>
 							<td class="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-400"
 								>{registration.emailSnapshot}</td
+							>
+							<td class="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400"
+								>{registration.memberIdSnapshot ?? ''}</td
 							>
 							<td class="px-4 py-2.5 text-sm text-gray-400 italic dark:text-gray-500"
 								>{registration.adminNote ?? ''}</td
@@ -571,6 +645,10 @@
 						>
 						<th
 							class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+							>Member ID</th
+						>
+						<th
+							class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
 							>Note</th
 						>
 						<th
@@ -588,6 +666,9 @@
 							<td class="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-400"
 								>{registration.emailSnapshot}</td
 							>
+							<td class="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400"
+								>{registration.memberIdSnapshot ?? ''}</td
+							>
 							<td class="px-4 py-2.5 text-sm text-gray-400 italic dark:text-gray-500"
 								>{registration.adminNote ?? ''}</td
 							>
@@ -601,6 +682,86 @@
 										title="Revert to registered"
 									>
 										↩ Revert
+									</button>
+								</form>
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	</section>
+{/if}
+
+<!-- Declined -->
+{#if data.declined.length > 0}
+	<section class="mb-8">
+		<h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+			Declined
+			<span class="text-sm font-normal text-gray-500 dark:text-gray-400"
+				>({data.declined.length})</span
+			>
+		</h2>
+		<div
+			class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+		>
+			<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+				<thead class="bg-gray-50 dark:bg-gray-700/50">
+					<tr>
+						<th
+							class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+							>Name</th
+						>
+						<th
+							class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+							>Email</th
+						>
+						<th
+							class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+							>Member ID</th
+						>
+						<th
+							class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+							>Declined</th
+						>
+						<th
+							class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+							>Note</th
+						>
+						<th
+							class="px-4 py-2.5 text-right text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+							>Actions</th
+						>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+					{#each data.declined as { registration } (registration.id)}
+						<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+							<td class="px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100"
+								>{registration.nameSnapshot}</td
+							>
+							<td class="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-400"
+								>{registration.emailSnapshot}</td
+							>
+							<td class="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400"
+								>{registration.memberIdSnapshot ?? ''}</td
+							>
+							<td class="px-4 py-2.5 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"
+								>{formatDate(registration.updatedAt)}</td
+							>
+							<td class="px-4 py-2.5 text-sm text-gray-400 italic dark:text-gray-500"
+								>{registration.adminNote ?? ''}</td
+							>
+							<td class="px-4 py-2.5 text-right whitespace-nowrap">
+								<form method="POST" action="?/status" use:enhance>
+									<input type="hidden" name="registration_id" value={registration.id} />
+									<input type="hidden" name="status" value="registered" />
+									<button
+										type="submit"
+										class="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+										title="Change to registered"
+									>
+										Register
 									</button>
 								</form>
 							</td>
@@ -643,6 +804,10 @@
 							>
 							<th
 								class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+								>Member ID</th
+							>
+							<th
+								class="px-4 py-2.5 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
 								>Cancelled</th
 							>
 							<th
@@ -659,6 +824,9 @@
 								>
 								<td class="px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400"
 									>{registration.emailSnapshot}</td
+								>
+								<td class="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400"
+									>{registration.memberIdSnapshot ?? ''}</td
 								>
 								<td class="px-4 py-2.5 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"
 									>{formatDate(registration.updatedAt)}</td

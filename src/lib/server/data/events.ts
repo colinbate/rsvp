@@ -70,7 +70,8 @@ export async function getEventWithCounts(db: ORM, id: number) {
 		waitlistedCount: statusCounts['waitlisted'] ?? 0,
 		cancelledCount: statusCounts['cancelled'] ?? 0,
 		attendedCount: statusCounts['attended'] ?? 0,
-		noShowCount: statusCounts['no_show'] ?? 0
+		noShowCount: statusCounts['no_show'] ?? 0,
+		declinedCount: statusCounts['declined'] ?? 0
 	};
 }
 
@@ -102,7 +103,8 @@ export async function listEventsWithCounts(db: ORM) {
 			waitlistedCount: statusCounts['waitlisted'] ?? 0,
 			cancelledCount: statusCounts['cancelled'] ?? 0,
 			attendedCount: statusCounts['attended'] ?? 0,
-			noShowCount: statusCounts['no_show'] ?? 0
+			noShowCount: statusCounts['no_show'] ?? 0,
+			declinedCount: statusCounts['declined'] ?? 0
 		};
 	});
 }
